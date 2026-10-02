@@ -1,6 +1,7 @@
 package local.mediarescan;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.media.MediaScannerConnection;
@@ -22,9 +23,10 @@ public class MainActivity extends Activity {
     private static volatile int total, done;
     private static final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler();
-    private TextView status, permission;
+    private TextView status, permission, folderLabel;
+    private String selectedPath;
     private ProgressBar progress;
-    private Button scan, grant, stop;
+    private Button scan, grant, stop, choose;
     private final Runnable refresh = new Runnable() {
         public void run() { render(); ui.postDelayed(this, 400); }
     };
@@ -62,12 +64,19 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName()))); }
             catch (Exception e) { startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)); }
         });
-        scan = button(root, "立即重新扫描"); scan.setOnClickListener(v -> startScan());
+        selectedPath = getPreferences(0).getString("folder", null);
+        folderLabel = text(root, "", 15);
+        choose = button(root, "选择扫描目录");
+        choose.setOnClickListener(v -> {
+            File initial = selectedPath == null ? Environment.getExternalStorageDirectory() : new File(selectedPath);
+            showFolders(initial.isDirectory() ? initial : Environment.getExternalStorageDirectory());
+        });
+        scan = button(root, "扫描所选目录"); scan.setOnClickListener(v -> startScan());
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(-1, dp(12)); pp.topMargin = dp(24);
         root.addView(progress, pp); status = text(root, "", 16);
         stop = button(root, "停止扫描"); stop.setOnClickListener(v -> { cancel = true; message = "正在停止…"; });
-        text(root, "扫描范围：内部共享存储中的照片、视频和音频。\n\n自动跳过隐藏目录、含 .nomedia 的目录及 Android 应用私有目录。扫描过程中请保持此页面打开。\n\n完成后，重新进入微信或抖音的照片选择页面。", 14);
+        text(root, "仅扫描所选目录及其子目录中的照片、视频和音频。选择内部存储根目录则扫描整个共享存储。\n\n自动跳过隐藏目录、含 .nomedia 的目录及 Android 应用私有目录。扫描过程中请保持此页面打开。\n\n完成后，重新进入微信或抖音的照片选择页面。", 14);
         if (!running) message = getPreferences(0).getString("last", "准备就绪");
     }
     @Override protected void onResume() { super.onResume(); ui.post(refresh); }
@@ -76,14 +85,63 @@ public class MainActivity extends Activity {
         boolean allowed = Environment.isExternalStorageManager();
         permission.setText(allowed ? "✓ 文件访问权限已开启" : "首次使用，请允许访问文件以查找尚未入库的照片。");
         grant.setVisibility(allowed ? View.GONE : View.VISIBLE);
-        scan.setEnabled(allowed && !running); stop.setVisibility(running ? View.VISIBLE : View.GONE);
+        folderLabel.setText(selectedPath == null ? "尚未选择目录" : "扫描目录（包含子目录）\n" + selectedPath);
+        choose.setEnabled(allowed && !running);
+        scan.setEnabled(allowed && !running && selectedPath != null); stop.setVisibility(running ? View.VISIBLE : View.GONE);
         status.setText(message); progress.setIndeterminate(running && total == 0);
         progress.setMax(Math.max(total, 1)); progress.setProgress(done);
         if (running) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
-    private void startScan() {
+    private void showFolders(File directory) {
         if (running || !Environment.isExternalStorageManager()) return;
+        File storage = Environment.getExternalStorageDirectory();
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("选择扫描目录")
+            .setMessage(directory.getAbsolutePath() + "\n正在读取子目录…")
+            .setNegativeButton("取消", null).create();
+        dialog.show();
+        worker.execute(() -> {
+            List<File> dirs = new ArrayList<>();
+            String error = null;
+            try {
+                ScanScope.validate(storage, directory);
+                File[] children = directory.listFiles();
+                if (children == null) throw new java.io.IOException("无法读取此目录，请检查文件访问权限");
+                for (File child : children) {
+                    if (!child.isDirectory()) continue;
+                    try { ScanScope.validate(storage, child); dirs.add(child); }
+                    catch (java.io.IOException ignored) { }
+                }
+                dirs.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+            } catch (java.io.IOException e) { error = e.getMessage(); }
+            final String failure = error;
+            runOnUiThread(() -> {
+                if (isDestroyed() || isFinishing() || !dialog.isShowing()) return;
+                dialog.dismiss();
+                if (failure != null) {
+                    new AlertDialog.Builder(this).setMessage(failure).setPositiveButton("确定", null).show();
+                    return;
+                }
+                boolean isRoot = directory.equals(storage);
+                List<String> names = new ArrayList<>();
+                if (!isRoot) names.add("↑ 返回上一级");
+                for (File dir : dirs) names.add(dir.getName() + "/");
+                new AlertDialog.Builder(this).setTitle(directory.getAbsolutePath())
+                    .setItems(names.toArray(new String[0]), (d, index) -> {
+                        if (!isRoot && index == 0) showFolders(directory.getParentFile());
+                        else showFolders(dirs.get(index - (isRoot ? 0 : 1)));
+                    })
+                    .setPositiveButton(isRoot ? "选择整个内部存储" : "选择此目录", (d, which) -> {
+                        selectedPath = directory.getAbsolutePath();
+                        getPreferences(0).edit().putString("folder", selectedPath).apply();
+                        render();
+                    }).setNegativeButton("取消", null).show();
+            });
+        });
+    }
+    private void startScan() {
+        if (running || !Environment.isExternalStorageManager() || selectedPath == null) return;
+        final File target = new File(selectedPath);
         running = true; cancel = false; total = done = 0; message = "正在查找媒体文件…";
         getPreferences(0).edit().putString("last", "上次扫描中断，请重新扫描。").apply();
         final android.content.Context context = getApplicationContext();
@@ -93,7 +151,9 @@ public class MainActivity extends Activity {
             int[] skipped = {0, 0};
             try {
                 List<String> files = new ArrayList<>();
-                collect(Environment.getExternalStorageDirectory(), files, skipped, true);
+                File storage = Environment.getExternalStorageDirectory();
+                ScanScope.validate(storage, target);
+                collect(target, files, skipped, target.equals(storage));
                 total = files.size();
                 for (String path : files) {
                     if (cancel) break;
@@ -119,7 +179,7 @@ public class MainActivity extends Activity {
                 message = "扫描未完成（已处理 " + done + " 项）\n" + e.getMessage();
                 android.util.Log.e("MediaRescan", "Scan failed", e);
             } finally {
-                message += "\n\n" + java.text.DateFormat.getDateTimeInstance().format(new Date());
+                message += "\n目录：" + target.getAbsolutePath() + "\n\n" + java.text.DateFormat.getDateTimeInstance().format(new Date());
                 prefs.edit().putString("last", message).apply();
                 android.util.Log.i("MediaRescan", message); running = false;
             }

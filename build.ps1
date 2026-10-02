@@ -5,7 +5,7 @@ $sdk = 'C:\env\Android\SDK'
 $androidBuild = "$sdk\build-tools\35.0.1"
 $androidJar = "$sdk\platforms\android-35\android.jar"
 New-Item -ItemType Directory -Force build\classes | Out-Null
-& "$javaBin\javac.exe" -encoding UTF-8 -source 8 -target 8 -classpath $androidJar -d build\classes src\local\mediarescan\MainActivity.java
+& "$javaBin\javac.exe" -encoding UTF-8 -source 8 -target 8 -classpath $androidJar -d build\classes src\local\mediarescan\MainActivity.java src\local\mediarescan\ScanScope.java
 if ($LASTEXITCODE) { throw 'javac failed' }
 $classes = @(Get-ChildItem build\classes -Filter *.class -Recurse | ForEach-Object FullName)
 & "$javaBin\java.exe" -cp "$androidBuild\lib\d8.jar" com.android.tools.r8.D8 --min-api 30 --lib $androidJar --output build @classes
