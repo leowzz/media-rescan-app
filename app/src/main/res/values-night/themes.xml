@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.MediaRescan" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#8DD6BD</item>
+        <item name="colorOnPrimary">#00382A</item>
+        <item name="colorPrimaryContainer">#07513F</item>
+        <item name="colorOnPrimaryContainer">#A8F2D7</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

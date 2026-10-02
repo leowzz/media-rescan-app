@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">媒体库刷新</string>
+    <style name="Theme.MediaRescan" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#246B5C</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#A8F2D7</item>
+        <item name="colorOnPrimaryContainer">#002117</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

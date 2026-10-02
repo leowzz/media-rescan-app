@@ -6,6 +6,7 @@ import java.nio.file.*;
 import java.util.Comparator;
 
 public class ScanScopeTest {
+    @org.junit.Test public void validatesBoundariesAndOverlaps() throws Exception { main(new String[0]); }
     private static void rejects(File root, File target) throws Exception {
         try { ScanScope.validate(root, target); }
         catch (IOException expected) { return; }
