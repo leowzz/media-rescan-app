@@ -18,6 +18,17 @@ public class ScanScopeTest {
             File album = Files.createDirectories(root.toPath().resolve("DCIM/Album")).toFile();
             ScanScope.validate(root, root);
             ScanScope.validate(root, album);
+            File parent = album.getParentFile();
+            File sibling = Files.createDirectory(parent.toPath().resolve("Album2")).toFile();
+            if (!ScanScope.minimalRoots(java.util.Arrays.asList(album, album, sibling))
+                    .equals(java.util.Arrays.asList(album, sibling))) throw new AssertionError("Duplicate/sibling handling");
+            if (!ScanScope.minimalRoots(java.util.Arrays.asList(album, parent, sibling))
+                    .equals(java.util.Arrays.asList(parent))) throw new AssertionError("Parent added after child");
+            if (!ScanScope.minimalRoots(java.util.Arrays.asList(parent, album))
+                    .equals(java.util.Arrays.asList(parent))) throw new AssertionError("Child added after parent");
+            if (!ScanScope.minimalRoots(java.util.Arrays.asList(album, root, sibling))
+                    .equals(java.util.Arrays.asList(root))) throw new AssertionError("Whole storage overlap");
+            if (!ScanScope.minimalRoots(java.util.Collections.emptyList()).isEmpty()) throw new AssertionError("Empty list");
             rejects(root, Files.createDirectory(temp.resolve("storage-other")).toFile());
             rejects(root, new File(root, "missing"));
             rejects(root, Files.createFile(root.toPath().resolve("file.jpg")).toFile());

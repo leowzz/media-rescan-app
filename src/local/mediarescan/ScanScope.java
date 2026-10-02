@@ -5,6 +5,20 @@ import java.io.IOException;
 
 /** Validate persisted selections as well as picker entries, including ancestor exclusions. */
 final class ScanScope {
+    /** Input directories have already passed validate. Preserve order among independent roots. */
+    static java.util.List<File> minimalRoots(java.util.List<File> targets) {
+        java.util.List<File> roots = new java.util.ArrayList<>();
+        for (File target : targets) {
+            boolean covered = false;
+            for (File root : roots) {
+                if (target.toPath().startsWith(root.toPath())) { covered = true; break; }
+            }
+            if (covered) continue;
+            roots.removeIf(root -> root.toPath().startsWith(target.toPath()));
+            roots.add(target);
+        }
+        return roots;
+    }
     static void validate(File storage, File target) throws IOException {
         File root = storage.getCanonicalFile();
         File selected = target.getCanonicalFile();
