@@ -50,6 +50,11 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(58));
         p.topMargin = dp(12); parent.addView(b, p); return b;
     }
+    private MaterialButton textButton(String title) {
+        MaterialButton button = (MaterialButton)getLayoutInflater().inflate(R.layout.button_text, null);
+        button.setText(title);
+        return button;
+    }
     @Override public void onCreate(Bundle b) {
         DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(b);
@@ -72,8 +77,7 @@ public class MainActivity extends AppCompatActivity {
         TextView heading = text(header, "媒体库刷新", 28);
         heading.setTypeface(null, android.graphics.Typeface.BOLD);
         heading.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-        MaterialButton help = new MaterialButton(new androidx.appcompat.view.ContextThemeWrapper(this, com.google.android.material.R.style.Widget_Material3_Button_TextButton), null, 0);
-        help.setText("帮助"); header.addView(help);
+        MaterialButton help = textButton("帮助"); header.addView(help);
         help.setOnClickListener(v -> new MaterialAlertDialogBuilder(this).setTitle("使用说明")
             .setMessage("添加同步目录，再点击重新扫描。\n\n扫描包含子目录，重叠范围只处理一次。自动跳过隐藏目录、.nomedia 和 Android 私有目录。移除目标不会删除文件。\n\n扫描时请保持页面打开；完成后重新进入微信或抖音的选图页。\n\n版本 " + appVersion())
             .setPositiveButton("知道了", null).show());
@@ -107,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
         resultBody.addView(resultHeader);
         status = text(resultHeader, "", 18); status.setTypeface(null, android.graphics.Typeface.BOLD);
         status.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-        details = new MaterialButton(new androidx.appcompat.view.ContextThemeWrapper(this, com.google.android.material.R.style.Widget_Material3_Button_TextButton), null, 0);
-        details.setText("详情"); resultHeader.addView(details);
+        details = textButton("详情"); resultHeader.addView(details);
         details.setOnClickListener(v -> new MaterialAlertDialogBuilder(this).setTitle("扫描详情")
             .setMessage(message).setPositiveButton("关闭", null).show());
         summary = text(resultBody, "", 14);
@@ -187,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
             label.setTypeface(null, android.graphics.Typeface.BOLD);
             TextView location = text(labels, path.equals(root) ? "整个共享存储" : path.substring(Math.min(root.length() + 1, path.length())), 12);
             location.setTextColor(color(com.google.android.material.R.attr.colorOnSurfaceVariant));
-            Button remove = new MaterialButton(new androidx.appcompat.view.ContextThemeWrapper(this, com.google.android.material.R.style.Widget_Material3_Button_TextButton), null, 0); remove.setText("移除");
+            Button remove = textButton("移除");
             remove.setContentDescription("移除目录 " + path);
             remove.setOnClickListener(v -> {
                 if (running) return;
